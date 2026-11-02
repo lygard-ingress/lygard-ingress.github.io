@@ -1,0 +1,130 @@
+# Changelog
+
+All notable changes. Versions follow [Semantic Versioning](https://semver.org/); before 1.0,
+minor versions may change behaviour (called out under **Changed**).
+
+## 0.13.1 — 2026-11-02
+
+### Fixed
+
+- **`idleTimeout` was not applied to HTTP/1.1 keep-alive connections.** They were closed after
+  `headerReadTimeout` (15 s) without a request, not after `idleTimeout` (120 s), because hyper
+  starts the header timer while waiting for the next request. Clients that reuse connections less
+  often than every 15 s (and load balancers pooling to Lygard) paid a new TCP and TLS handshake.
+  Now the wait between requests is bounded by `idleTimeout` and `headerReadTimeout` starts with a
+  request's first byte; slow-header protection is unchanged. HTTP/2 connections are still kept
+  open by pings until the client closes them or `maxConnections` is reached.
+
+## 0.13.0 — 2026-11-02
+
+### Added
+
+- **HTTP/3 (QUIC)**: `http3: true` on an HTTPS listener serves HTTP/3 on UDP at the same address
+  and port, with the same certificates, routes and policies, and advertises it with `Alt-Svc` on
+  HTTP/1.1 and HTTP/2 responses (`http3AdvertisePort` when the load balancer maps ports). 0-RTT
+  is off. Graceful drain sends GOAWAY; listener changes keep the UDP socket. New metrics
+  `lygard_quic_connections_total`, `lygard_quic_active_connections`,
+  `lygard_quic_handshake_errors_total`. Helm: `http3.enabled` adds UDP 443 to the data plane
+  Service; the controller adds UDP ports for Gateway HTTPS listeners on other ports and on
+  per-Gateway Services. Enabled in the Azure, GCP, OKE and MetalLB presets
+  ([docs/http3.md](http3.md)).
+- **Gateway API GAMMA (service mesh routing)**: HTTPRoutes whose parent is a Service steer meshed
+  clients: path/method/header/query matches, weighted backends, request/response header
+  modifiers, request timeouts; producer routes (all clients) and consumer routes (one
+  namespace's clients, preferred by them); `Accepted`/`ResolvedRefs` status per Service parent.
+- **proxy-wasm**: unary gRPC calls (`proxy_grpc_call`, cancel/close), shared queues (register,
+  resolve, enqueue, dequeue, `proxy_on_queue_ready`), and the `compress`/`uncompress` foreign
+  functions.
+- **OpenTelemetry**: protobuf export (default; `protocol: json` keeps JSON), `compression: gzip`,
+  `logSampling` (`all`/`sampled`/`errors`), `batchSize`, `exportInterval`, `queueSize`.
+- **WAF**: `skipExtensions` / `lygard.io/waf-skip-extensions` leaves plain static-file fetches
+  uninspected; `lygard_waf_events_dropped_total`.
+- [docs/performance.md](performance.md): the measured cost of every feature and setting;
+  `bench/run.py` scenarios for each; `tests/soak/` for long-running soak tests.
+
+### Changed
+
+- An idle HTTP/1 keep-alive connection holds no I/O buffers (hyper carried with a small patch in
+  `third_party/hyper`): 35 → 11 KB per proxied connection on Linux. `presets/high-scale.yaml`
+  allows 200,000 connections per pod.
+- OpenTelemetry: access log records are shared between stdout and OTLP instead of being
+  converted per request; 100% sampling with logs costs ~5 µs per request (was ~21 µs).
+  `lygard_trace_spans_exported_total` counts spans (it counted batches).
+- WAF matches are recorded by a background thread; matching requests no longer wait on shared
+  locks. CRS: allocation-free transformations when nothing changes, captures only on a match.
+
+## 0.12.1 — 2026-11-02
+
+### Fixed
+
+- The native WAF engine panicked on a request whose text had an `&` followed within 12 bytes by
+  a multi-byte UTF-8 character, which dropped that connection (found by the soak test). Any
+  client could trigger it on routes with `waf` enabled (native engine).
+
+## 0.12.0 — 2026-11-01
+
+First public release.
+
+### Added
+
+- **Gateway API v1.6.3**: types, CRDs and conformance; HTTPRoute `retry` (GEP-1731); TCPRoute
+  and UDPRoute at v1 (v1alpha2 still read on older CRD bundles).
+- **Gateway API features**: CORS filter; request and backend-request timeouts; 303/307/308
+  redirects; per-backend request header filters; HTTP 421 for misdirected (coalesced) requests;
+  BackendTLSPolicy `subjectAltNames` (DNS and URI); frontend client-certificate validation
+  (`AllowValidOnly`, `AllowInsecureFallback`, per-port overrides, status conditions).
+- **External (forward) auth**: `lygard.io/auth-url`, `auth-signin`, `auth-response-headers`, ...;
+  compatible with ingress-nginx and Traefik ForwardAuth, so oauth2-proxy/Authelia/Pomerium work.
+- **JWT required claims** (`lygard.io/jwt-required-claims`): 403 when a valid token lacks them.
+- **Country filtering** (`lygard.io/geo-allow`, `geo-deny`).
+- **Custom error pages** (`lygard.io/error-page-<code>`).
+- **gRPC-Web** translation to gRPC for HTTP/2 backends (binary and text).
+- **LygardPolicy** CRD (`lygard.io/v1alpha1`): typed route policy with strict validation and status.
+- **ingress-nginx compatibility**: `nginx.ingress.kubernetes.io/*` annotations translated, with a
+  warning naming the replacement for each unsupported one.
+- **ValidatingAdmissionPolicy** flagging unknown `lygard.io/*` annotations (Warn or Deny).
+- **Read-only viewer token** for the dashboard and admin API.
+- **Progressive rollouts for GRPCRoute**.
+- **Helm**: presets for AWS (incl. EKS Auto Mode), Azure, GCP, DigitalOcean, Linode (+ Premium
+  NodeBalancer), Oracle OKE, Hetzner, MetalLB and OpenShift, plus `light` and `high-scale`;
+  `extraVolumes`/`extraVolumeMounts`; `service.loadBalancerClass`, `service.nodePorts`, `sysctls`.
+- **Release engineering**: CI (fmt, clippy, tests, chart lint), Kubernetes 1.31–1.37 matrix and
+  conformance in kind, an A/B performance gate, and signed multi-arch releases with SBOM and
+  SLSA provenance.
+- **ACME DNS-01 and wildcard certificates**: `acme.dns01.solvers` configures DNS providers by
+  zone (longest match wins): Cloudflare, AWS Route 53 (static keys or IRSA web identity),
+  Google Cloud DNS (service account key or Workload Identity), Azure DNS (service principal or
+  Workload Identity), DigitalOcean, Linode, RFC 2136 (TSIG) and a generic webhook. Hosts in a
+  covered zone and every `*.` host are validated with DNS-01; the controller follows a CNAME on
+  `_acme-challenge` and waits until all of the zone's authoritative nameservers serve the record
+  (`acme.dns01.propagationTimeout`, `acme.dns01.nameservers`). `lygard.io/acme-solver` on an
+  Ingress or Gateway listener picks a solver by name (or `http01`). See
+  [docs/certificates.md](certificates.md).
+- **Helm**: `controller.serviceAccountAnnotations`, `controller.podLabels` and `controller.env`
+  (cloud workload identity for DNS providers).
+
+### Changed
+
+- Draining data planes answer HTTP/1 with `Connection: close`; `shutdownDelay` defaults to 15 s.
+- Without a retry policy, a refused connection is retried once on another endpoint, and a reset
+  one for idempotent methods.
+- CORS responses always echo the request's origin (never `*`), and `*` methods/headers echo what
+  the browser asked for.
+- The controller requires Go 1.26 to build; images move to `ghcr.io/lygard-ingress/*`.
+- Configuration is sent to the data plane gzip-compressed.
+- Wildcard TLS hosts with `lygard.io/acme: "true"` are no longer skipped with a warning: they are
+  issued through DNS-01, or reported as `CertificateFailed` on the Ingress/Gateway when no
+  DNS-01 solver covers them. A Gateway HTTPS listener asking for ACME no longer needs an HTTP
+  listener when its host is validated with DNS-01.
+
+### Fixed
+
+- Ingress routes and static routes were also served on per-Gateway load balancers.
+- A UDP listener made the Linode cloud controller reject the whole Service (PROXY protocol on UDP).
+- WAF tuning suggestions only reflected one replica.
+- `minReadySeconds` / `terminationGracePeriodSeconds` could not be set to 0.
+- Changing a listener's settings on Linux could reset a few connections: the listening sockets
+  are now handed to the new accept loops instead of being closed and rebound.
+- JWT validation used jsonwebtoken 9, affected by GHSA-h395-gr6q-cpjc (a claim of the wrong JSON
+  type skipped `exp`/`nbf` checks); now jsonwebtoken 11.
+- `lygard.io/acme` no longer produces an "unknown annotation" warning on Ingresses.
