@@ -10,7 +10,14 @@ throughput depends on the machine; compare ratios, and compare runs from the sam
 connections for 10 s, three rounds, medians. Apple M-series laptop, release build (mimalloc),
 2026-11-02 (`bench/results-laptop-2026-11-02.json`).
 
-| Configuration | req/s | CPU µs/request | p99 | RSS |
+This is a **throughput** test: every connection sends its next request the moment the previous
+one returns, so the load generator, Lygard and the backend run the laptop's CPUs at 100%. Latency
+under saturation is queueing, about connections ÷ req/s (200 ÷ 54,500 = 3.7 ms), which is why even
+the backend alone shows 2 ms. Read the p99 column as "how the queue grows", not as the latency
+Lygard adds; that is in [latency at a fixed rate](#latency-at-a-fixed-rate) below. The cost per
+request is the CPU column.
+
+| Configuration | req/s | CPU µs/request | p99 at saturation | RSS |
 |---|---|---|---|---|
 | Backend answering directly (ceiling) | 108,300 | – | 2.1 ms | – |
 | Lygard, lightest (no logs, no OTel, no WAF) | 54,500 | 55 | 4.5 ms | 37 MB |
@@ -27,6 +34,35 @@ connections for 10 s, three rounds, medians. Apple M-series laptop, release buil
 The default profile (5% trace sampling, native WAF) costs nothing measurable over the lightest
 path. Full CRS costs about 3.5x CPU per request and stays opt-in per route; what each CRS and
 OpenTelemetry setting costs is in [performance.md](performance.md).
+
+## Latency at a fixed rate
+
+The same setup at a steady 5,000 requests per second over 50 connections, well below saturation
+(`RATE=5000 CONC=50 python3 bench/run.py`; `oha -q 5000 --latency-correction`), three rounds of
+10 s, medians (`bench/results-laptop-rate5000-2026-11-02.json`). "Added" is the median minus the
+backend's own.
+
+| Configuration | p50 | Added at p50 |
+|---|---|---|
+| Backend answering directly | 0.19 ms | – |
+| Lygard, lightest | 0.36 ms | 0.17 ms |
+| + access log (JSON) | 0.45 ms | 0.26 ms |
+| + API discovery | 0.47 ms | 0.28 ms |
+| + anomaly detection | 0.46 ms | 0.27 ms |
+| + OpenTelemetry traces, 5% sampling | 0.48 ms | 0.29 ms |
+| + OpenTelemetry, 100% sampling + logs | 0.45 ms | 0.26 ms |
+| + native WAF (block) | 0.43 ms | 0.24 ms |
+| + OWASP CRS paranoia 1 (block) | 0.48 ms | 0.29 ms |
+| + OWASP CRS, POST 1 KB JSON | 0.69 ms | 0.50 ms |
+| + proxy-wasm plugin (headers only) | 0.44 ms | 0.25 ms |
+| everything on (logs, discovery, anomaly, OTel 5%, CRS) | 0.47 ms | 0.28 ms |
+
+Lygard adds about 0.2-0.3 ms at the median, 0.5 ms with full CRS inspecting a request body.
+
+Tail latency is not reported from this laptop: p99 for the same configuration ranged from 0.7 ms
+to 120 ms between rounds (the backend alone: 0.5-2.9 ms), because the OS schedules the load
+generator, both proxies and everything else on the same cores. Tails need dedicated Linux
+machines with the load generator on its own host.
 
 ## Memory
 
@@ -65,6 +101,7 @@ Latency stays flat with route count; propagation time includes `kubectl apply` o
 ```sh
 cargo build --release
 python3 bench/run.py                     # ROUNDS=3 DUR=10s ONLY="lightest|CRS"
+RATE=5000 CONC=50 python3 bench/run.py   # latency at a fixed rate instead of saturation
 python3 bench/conns.py                   # CONNS=10000 MODE=proxy|server
 tests/bench-k8s/route-scale.sh v1.37.0   # needs kind, oha and the :matrix images
 ```
