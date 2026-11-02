@@ -32,6 +32,66 @@ per-cloud table. The Azure, GCP, OKE and MetalLB presets turn it on.
 Other clouds (Alibaba ACK, IBM IKS, ...) work as a generic `LoadBalancer` Service; take the
 closest preset and set the provider's annotations.
 
+## Behind a layer 7 load balancer
+
+The presets above put Lygard behind each cloud's layer 4 load balancer, which passes TCP
+through. Lygard can also sit behind the cloud's managed layer 7 load balancer, when you want the
+cloud's TLS certificates (ACM, Key Vault, Google-managed), its edge WAF or CDN, or one load
+balancer shared with other services. The cloud's own controller builds the load balancer from an
+Ingress or Gateway that the chart creates (`frontend` in values.yaml) and sends every request to
+Lygard, which still does the routing, WAF, auth and rate limiting.
+
+| Cloud | Preset | Load balancer | `trustedProxies` | Lygard `idleTimeout` |
+|---|---|---|---|---|
+| AWS EKS (AWS Load Balancer Controller) | `aws-alb.yaml` | Application Load Balancer, IP targets | ALB subnets or VPC CIDR (yours) | 120 s, above the ALB's 60 s |
+| Azure AKS (AGIC) | `azure-appgw.yaml` | Application Gateway v2 | Application Gateway subnet (yours) | 120 s |
+| Azure AKS | `azure-agc.yaml` | Application Gateway for Containers | Association subnet (yours) | 320 s, above AGC's 5 min |
+| Google GKE (Gateway) | `gcp-l7.yaml` | Global external Application Load Balancer | Google front ends (in the preset); regional: add your proxy-only subnet | 620 s, above Google's 600 s |
+| Oracle OKE (OCI Native Ingress Controller) | `oke-l7.yaml` | OCI flexible load balancer | Load balancer subnet (yours) | 320 s, above OCI's 300 s |
+
+```sh
+helm install lygard oci://ghcr.io/lygard-ingress/charts/lygard -n lygard --create-namespace \
+  -f presets/aws-alb.yaml --set 'config.global.trustedProxies={10.0.0.0/16}' \
+  --set-string 'frontend.ingress.annotations.alb\.ingress\.kubernetes\.io/certificate-arn=arn:aws:acm:...'
+```
+
+What the presets take care of, and what to keep in mind when writing your own:
+
+- **Client address.** Lygard believes `X-Forwarded-For` only from `trustedProxies`, so set them to
+  the addresses the load balancer connects from. The chart refuses to render a `frontend` without
+  them: every client would appear as the load balancer. Google's load balancers append their own
+  address after the client's (`<client>, <load balancer>`), so `gcp-l7.yaml` also sets
+  `trustedHops: 1`. Application Gateway v2 writes entries as `IP:port`; Lygard reads that form.
+- **HTTPS seen by the client.** The load balancer ends TLS and forwards plain HTTP. Lygard takes
+  the scheme from `X-Forwarded-Proto` when the peer is trusted, so `httpsRedirect`, HSTS,
+  redirects and the scheme passed to external auth and plugins behave as if Lygard ended TLS.
+- **Idle connections.** The load balancer reuses connections to Lygard; if Lygard closes an idle
+  one first, a request sent on it fails with a 502. Lygard's `idleTimeout` must be longer than
+  the load balancer's backend idle timeout (the table above).
+- **Health checks** go to Lygard's admin port (`9901`, `/readyz`), which fails as soon as a pod
+  starts shutting down: ALB, AGIC and OCI through Ingress annotations, AGC and GKE through
+  `HealthCheckPolicy`. The load balancer must be allowed to reach port 9901 on the pods.
+- **Draining.** The presets turn on or shorten each load balancer's connection draining (off by
+  default on Application Gateway and GKE, 300 s on ALB) and set `shutdownDelay: 30s`.
+- **TLS to Lygard** is off: the load balancer sends HTTP to port 80. To re-encrypt, set
+  `frontend.backendPort: https` and the cloud's backend-protocol setting (ALB does not verify
+  backend certificates; Application Gateway v2 accepts only a well-known CA or an uploaded root).
+- **HTTP/3** is the load balancer's to offer, not Lygard's, and PROXY protocol is off.
+
+Sources: AWS [X-Forwarded headers](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/x-forwarded-headers.html),
+[ALB attributes](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-load-balancer-attributes.html),
+[controller annotations](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingress/annotations/);
+Azure [how Application Gateway works](https://learn.microsoft.com/en-us/azure/application-gateway/how-application-gateway-works),
+[AGIC annotations](https://learn.microsoft.com/en-us/azure/application-gateway/ingress-controller-annotations),
+[AGC components](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/application-gateway-for-containers-components),
+[AGC health probes](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/custom-health-probe);
+Google [Application Load Balancer headers and ranges](https://docs.cloud.google.com/load-balancing/docs/https),
+[timeouts](https://docs.cloud.google.com/load-balancing/docs/https/request-distribution),
+[Gateway policies](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/configure-gateway-resources);
+Oracle [load balancer headers](https://docs.oracle.com/en-us/iaas/Content/Balance/Reference/httpheaders.htm),
+[connection reuse](https://docs.oracle.com/en-us/iaas/Content/Balance/Reference/connectionreuse.htm),
+[native ingress annotations](https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengsettingupnativeingresscontroller-configuring.htm).
+
 ## In-cluster callers and PROXY protocol
 
 With PROXY protocol on, pods that call the load balancer's IP are short-circuited to Lygard by

@@ -3,6 +3,32 @@
 All notable changes. Versions follow [Semantic Versioning](https://semver.org/); before 1.0,
 minor versions may change behaviour (called out under **Changed**).
 
+## Unreleased
+
+### Added
+
+- **Behind a cloud layer 7 load balancer**: presets `aws-alb.yaml` (Application Load Balancer),
+  `azure-appgw.yaml` (Application Gateway v2 with AGIC), `azure-agc.yaml` (Application Gateway for
+  Containers), `gcp-l7.yaml` (GKE Gateway, global external Application Load Balancer) and
+  `oke-l7.yaml` (OCI Native Ingress Controller). The chart's new `frontend` values create the
+  cloud's Ingress or Gateway pointing at Lygard, plus its health-check and backend policies
+  ([docs/cloud-providers.md](cloud-providers.md#behind-a-layer-7-load-balancer)).
+- `global.trustedHops`: X-Forwarded-For entries a trusted load balancer appends after the
+  client's (1 for Google Cloud).
+
+### Changed
+
+- The OWASP CRS engine uses 22-24% less CPU per request (GET, all features on) and ~5% less on
+  JSON bodies; libinjectionrs is vendored with a faster keyword lookup. Detection is unchanged.
+
+### Fixed
+
+- Behind a load balancer that ends TLS, `httpsRedirect` redirected every request (a loop) and
+  HSTS was never sent: Lygard now takes the scheme from `X-Forwarded-Proto` when the peer is in
+  `trustedProxies`, for redirects, HSTS, request captures, external auth and plugins.
+- X-Forwarded-For entries with a port (`203.0.113.7:51234`, sent by Azure Application Gateway)
+  were ignored, so the client appeared as the load balancer.
+
 ## 0.13.1 — 2026-11-02
 
 ### Fixed
