@@ -12,7 +12,10 @@ build it? Open an issue.
   addresses, Gateway client certificates to backends, session persistence (GEP-1619).
 - **Upstream conformance report**: submit the v1.6 report to kubernetes-sigs/gateway-api.
 - **Cloud validation**: run the rollout and node-drain tests through real EKS, AKS, GKE, DOKS and
-  OKE load balancers with the shipped presets (Linode is validated today).
+  OKE load balancers, layer 4 and layer 7, with the shipped presets (Linode, including the
+  NodeBalancer in HTTP mode, is validated today).
+- **Akamai Cloud Quick Deploy App**: a hardened VM running Lygard with automatic HTTPS, the CRS
+  WAF and the dashboard (`deploy/marketplace/`), submitted to the Akamai marketplace.
 - **Soak and chaos**: 72-hour runs with pod, node and controller failures under load.
 - **Incremental configuration**: send changes instead of full documents to the proxies (full
   documents are already gzip-compressed).
@@ -26,12 +29,25 @@ build it? Open an issue.
 - **Authorization policies**: CEL/OPA rules on routes beyond JWT claims, IP and country lists.
 - **Built-in OIDC login** (today: forward auth to oauth2-proxy and similar).
 - **Per-client connection limits** and response compression (gzip/brotli/zstd).
-- **OWASP CRS**: faster evaluation of request bodies (a literal prefilter across rules), managed
-  rule updates, per-rule metrics in the dashboard.
+- **OWASP CRS**: a literal prefilter across rules for large request bodies, managed rule updates,
+  per-rule metrics in the dashboard.
+- **Ingress hostname ownership** across namespaces (opt-in), for multi-tenant clusters that use
+  Ingress rather than the Gateway API.
 - **Public, reproducible competitor benchmark** with one harness for every gateway.
 
 ## Done recently
 
+- **Automatic HTTPS for standalone installs**: a built-in ACME client (HTTP-01) issues, caches and
+  renews Let's Encrypt certificates without a restart ([docs/certificates.md](certificates.md)).
+- **Security hardening**: ExternalName backends off by default, forged identity headers stripped,
+  stricter path normalization, slow-body timeouts, per-client connection limits, an admin API that
+  fails closed, dependency advisories gated in CI ([docs/hardening.md](hardening.md)).
+- **Behind cloud layer 7 load balancers**: presets for AWS ALB, Azure Application Gateway and
+  Application Gateway for Containers, GKE, OCI and the Linode NodeBalancer in HTTP mode, with
+  trusted `X-Forwarded-Proto` and hop handling ([docs/cloud-providers.md](cloud-providers.md)).
+- **WAF speed**: the CRS engine uses 22-24% less CPU per request, and 22-26% less on JSON bodies
+  (`multiMatch` without repeated work, a faster libinjection keyword lookup).
+- **Dashboard**: sign-in screen, section navigation, WAF events grouped with an attacks-only view.
 - **HTTP/3 (QUIC)** on HTTPS listeners, with Alt-Svc, graceful drain and UDP Service ports from
   the chart and the controller ([docs/http3.md](http3.md)).
 - **Memory per connection**: an idle HTTP/1 keep-alive connection holds no I/O buffers; 35 → 11 KB
@@ -51,8 +67,9 @@ build it? Open an issue.
 
 - **Exact global rate limits** with an optional Redis/Valkey store.
 - **proxy-wasm**: gRPC streams, signed plugin artifacts, ext_proc.
-- **Service mesh**: the GAMMA conformance profile (MESH-HTTP), ReferenceGrant for cross-namespace
-  mesh backends, retries and redirects in mesh routes; a node-level (ambient-style) proxy.
+- **Service mesh**: the rest of the GAMMA profile (path rewrite, backend request header changes,
+  GRPCRoute in the mesh; MESH-HTTP core and the redirect features pass today), ReferenceGrant for
+  cross-namespace mesh backends, retries in mesh routes; a node-level (ambient-style) proxy.
 - **Persistence** of API discovery, anomaly baselines and WAF tuning across restarts.
 - **Operational extras**: response caching, fault injection, zone-aware routing, PROXY protocol
   to backends, an OperatorHub bundle, multi-cluster.

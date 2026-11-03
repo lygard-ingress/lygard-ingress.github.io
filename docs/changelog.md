@@ -7,6 +7,14 @@ minor versions may change behaviour (called out under **Changed**).
 
 ### Added
 
+- **Akamai Cloud Quick Deploy App** (`deploy/marketplace/linode-marketplace-lygard`): a hardened
+  Ubuntu 24.04 Linode (sudo user, SSH lockdown, firewall, fail2ban, automatic security updates)
+  running Lygard from its image under systemd, with automatic HTTPS, the OWASP CRS WAF (detect or
+  block) and the dashboard over HTTPS on port 9443. Deployed end to end on Linode.
+- **Automatic HTTPS for standalone installs** (`global.acme`): the data plane gets and renews
+  Let's Encrypt (or any ACME CA) certificates over HTTP-01, caches them on disk and serves them
+  without a restart ([docs/certificates.md](certificates.md#standalone-automatic-https)).
+  Tried against Let's Encrypt on a Linode VM: issued in ~5 s, served from cache after a restart.
 - **Behind a cloud layer 7 load balancer**: presets `aws-alb.yaml` (Application Load Balancer),
   `azure-appgw.yaml` (Application Gateway v2 with AGIC), `azure-agc.yaml` (Application Gateway for
   Containers), `gcp-l7.yaml` (GKE Gateway, global external Application Load Balancer) and
@@ -21,11 +29,49 @@ minor versions may change behaviour (called out under **Changed**).
 
 ### Changed
 
+- **Dashboard**: a sign-in screen when the admin token is missing or wrong (where to find it,
+  "locked" status) instead of empty panels; a section bar (Overview, Traffic, Security, API, Tools,
+  Configuration); WAF events grouped by request and rules with a count and an "attacks only"
+  filter; the page no longer overflows the window when tables are wide.
+- The WAF event buffer evicts minor events (score under 5, not blocked) first, so a noisy rule
+  cannot push real attacks out of `/api/waf/events`.
 - The OWASP CRS engine uses 22-24% less CPU per request (GET, all features on); libinjectionrs is
   vendored with a faster keyword lookup. `multiMatch` rules no longer run their operator again on
   transformation steps that leave the value unchanged: the engine's time on a 1 KB JSON body drops
   a further 22-26% (942100, libinjection on every argument, was the most expensive rule).
   Detection is unchanged.
+
+### Security
+
+- **The admin API now fails closed without a token.** With no `adminToken`, the dashboard and
+  `/api/*` (including replacing the configuration) were open on whatever address the admin
+  server listened on. They are now open only on a loopback admin address; elsewhere they answer
+  401 and Lygard logs a warning at startup. `/metrics`, `/healthz` and `/readyz` are unchanged.
+  The Helm chart always sets a token, so Kubernetes installs are not affected.
+- Dependency advisories cleared (wasmtime, webpki-roots; unmaintained rustls-pemfile and
+  serde_yaml replaced); CI now runs `cargo audit` and `govulncheck`; the controller builds with
+  Go 1.27.3.
+
+- **ExternalName Services are off by default** as backends (`controller.allowExternalNameServices`):
+  anyone able to create a Service could point the proxy at cloud metadata (169.254.169.254), the
+  node's loopback (including the admin port) or another namespace's Services. When enabled,
+  loopback, link-local and other namespaces' in-cluster names are still refused.
+- **Forged identity headers**: headers filled from JWT claims or the external auth service are
+  removed from the client's request first. Before, a token without the claim (or a session the
+  auth service answered without the header) let a client-supplied value reach the backend.
+- **External auth judged the raw path**: it now sees the normalized path the backend receives,
+  so `/public/../admin` is no longer approved as `/public/...`.
+- **Path normalization** decodes percent-encoded unreserved characters (`/%61dmin` is `/admin`)
+  and treats `..;` / `.;` as dot segments, so path-scoped policies cannot be bypassed that way.
+- **Slow bodies**: `global.bodyReadTimeout` (30 s) bounds the part of a request body Lygard
+  buffers before proxying; new optional `global.maxConnectionsPerIp`.
+- **CORS**: `allowOrigins: ["*"]` no longer grants credentialed access to every origin; the
+  `null` origin matches only when listed.
+- `waf.oversizeAction: reject` refuses bodies larger than the WAF inspects (default `pass`, as
+  before; truncated inspections are now flagged `WAFT` in the access log).
+- `/api/config` also redacts credential-like header values, plugin configurations and URL
+  passwords.
+- New [docs/hardening.md](hardening.md).
 
 ### Fixed
 

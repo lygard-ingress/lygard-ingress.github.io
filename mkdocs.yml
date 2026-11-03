@@ -36,6 +36,7 @@ nav:
       - Cloud providers: cloud-providers.md
       - Migrating from ingress-nginx: migrating-from-ingress-nginx.md
       - Upgrading: upgrading.md
+      - Hardening: hardening.md
   - Configuration:
       - Annotations: annotations.md
       - Policy: policy.md

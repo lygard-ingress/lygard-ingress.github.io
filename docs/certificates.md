@@ -270,3 +270,30 @@ resolvers (default: the pod's `/etc/resolv.conf`, then 1.1.1.1 and 8.8.8.8).
 - HTTP 401/403 from a provider: the token lacks a permission listed above.
 - Let's Encrypt rate limits apply (50 certificates per registered domain per week); test against
   the staging directory first.
+
+## Standalone: automatic HTTPS
+
+Outside Kubernetes (one YAML file, `lygard run -c`), the data plane gets certificates itself:
+
+```yaml
+global:
+  acme:
+    email: admin@example.com          # contact for the CA (expiry notices)
+    hosts: [example.com, www.example.com]
+    # directory: https://acme-staging-v02.api.letsencrypt.org/directory   # Let's Encrypt staging
+    # stateDir: /var/lib/lygard/acme                                       # the default
+listeners:
+  - {name: http, address: "0.0.0.0:80"}
+  - {name: https, address: "0.0.0.0:443", protocol: https}
+```
+
+- One certificate per host, through HTTP-01: the CA must reach each host on port 80, and Lygard
+  answers `/.well-known/acme-challenge/` on every HTTP listener before routing (also on routes
+  with `httpsRedirect`). Wildcards need DNS-01 and are refused here; use the controller.
+- Certificates, private keys and the ACME account are written to `stateDir` (directory mode
+  0700, files 0600) and served after a restart without a new order. Configured certificates win
+  over issued ones for the same host.
+- Renewal starts 30 days before expiry. A failed order is retried after 1 h, 2 h, 4 h ... up to a
+  day, and the error is logged (`ACME certificate failed`).
+- Until a host's certificate arrives, TLS for it uses a self-signed fallback.
+
