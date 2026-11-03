@@ -282,7 +282,8 @@ helm install lygard oci://ghcr.io/lygard-ingress/charts/lygard -n lygard --creat
   -f https://raw.githubusercontent.com/lygard-ingress/lygard/main/deploy/helm/lygard/presets/aws.yaml
   # presets: aws, aws-automode, azure, gcp, digitalocean, linode (+ linode-premium), oke,
   # hetzner, metallb, openshift; add light.yaml or high-scale.yaml for sizing
-  # behind the cloud's layer 7 load balancer: aws-alb, azure-appgw, azure-agc, gcp-l7, oke-l7
+  # behind the cloud's layer 7 load balancer: aws-alb, azure-appgw, azure-agc, gcp-l7, oke-l7,
+  # linode-l7
 ```
 
 The cloud presets set the load balancer type, PROXY protocol (where the load balancer is an L4

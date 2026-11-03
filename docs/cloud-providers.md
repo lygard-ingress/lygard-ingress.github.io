@@ -48,6 +48,7 @@ Lygard, which still does the routing, WAF, auth and rate limiting.
 | Azure AKS | `azure-agc.yaml` | Application Gateway for Containers | Association subnet (yours) | 320 s, above AGC's 5 min |
 | Google GKE (Gateway) | `gcp-l7.yaml` | Global external Application Load Balancer | Google front ends (in the preset); regional: add your proxy-only subnet | 620 s, above Google's 600 s |
 | Oracle OKE (OCI Native Ingress Controller) | `oke-l7.yaml` | OCI flexible load balancer | Load balancer subnet (yours) | 320 s, above OCI's 300 s |
+| Akamai / Linode LKE | `linode-l7.yaml` | NodeBalancer in HTTP/HTTPS mode | `192.168.255.0/24` (in the preset) | 120 s |
 
 ```sh
 helm install lygard oci://ghcr.io/lygard-ingress/charts/lygard -n lygard --create-namespace \
@@ -77,6 +78,16 @@ What the presets take care of, and what to keep in mind when writing your own:
   `frontend.backendPort: https` and the cloud's backend-protocol setting (ALB does not verify
   backend certificates; Application Gateway v2 accepts only a well-known CA or an uploaded root).
 - **HTTP/3** is the load balancer's to offer, not Lygard's, and PROXY protocol is off.
+
+The Linode preset works differently: a NodeBalancer in HTTP mode is configured on Lygard's own
+`LoadBalancer` Service (no Ingress), with the certificate in a Secret
+(`lygard-nodebalancer-tls`); `service.httpsTargetPort: http` sends its decrypted 443 traffic to
+Lygard's HTTP listener, and `externalTrafficPolicy: Local` keeps the NodeBalancer's address as the
+peer. Tried on LKE 1.37 (2026-11-03): the NodeBalancer connects from 192.168.255.0/24 and sends
+`X-Forwarded-For: <client>` and `X-Forwarded-Proto`; plain HTTP is redirected, HTTPS is served
+with HSTS and no redirect loop, the real client address is logged (a client-supplied
+X-Forwarded-For is ignored), and a rolling restart under load dropped no requests (1,434 of 1,434).
+The other layer 7 presets have not been tried on their clouds yet.
 
 Sources: AWS [X-Forwarded headers](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/x-forwarded-headers.html),
 [ALB attributes](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-load-balancer-attributes.html),

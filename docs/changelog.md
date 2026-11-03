@@ -13,13 +13,19 @@ minor versions may change behaviour (called out under **Changed**).
   `oke-l7.yaml` (OCI Native Ingress Controller). The chart's new `frontend` values create the
   cloud's Ingress or Gateway pointing at Lygard, plus its health-check and backend policies
   ([docs/cloud-providers.md](cloud-providers.md#behind-a-layer-7-load-balancer)).
+- `linode-l7.yaml`: the NodeBalancer in HTTP/HTTPS mode, ending TLS with a certificate from a
+  Secret; tried on LKE. New `service.httpsTargetPort` sends a load balancer's decrypted 443 traffic
+  to Lygard's HTTP listener.
 - `global.trustedHops`: X-Forwarded-For entries a trusted load balancer appends after the
   client's (1 for Google Cloud).
 
 ### Changed
 
-- The OWASP CRS engine uses 22-24% less CPU per request (GET, all features on) and ~5% less on
-  JSON bodies; libinjectionrs is vendored with a faster keyword lookup. Detection is unchanged.
+- The OWASP CRS engine uses 22-24% less CPU per request (GET, all features on); libinjectionrs is
+  vendored with a faster keyword lookup. `multiMatch` rules no longer run their operator again on
+  transformation steps that leave the value unchanged: the engine's time on a 1 KB JSON body drops
+  a further 22-26% (942100, libinjection on every argument, was the most expensive rule).
+  Detection is unchanged.
 
 ### Fixed
 
