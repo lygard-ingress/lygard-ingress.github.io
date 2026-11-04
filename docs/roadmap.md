@@ -7,9 +7,9 @@ build it? Open an issue.
 
 ## Now
 
-- **Gateway API, remaining extended features**: `ListenerSet`,
-  per-Gateway resources in the Gateway's own namespace (labels, annotations and static IPs already
-  reach the per-Gateway Service).
+- **Gateway API, remaining extended features**: per-Gateway resources in the Gateway's own
+  namespace (labels, annotations and static IPs already reach the per-Gateway Service), which the
+  `GatewayInfrastructure` conformance test needs.
 - **Upstream conformance report**: submit the v1.6 report to kubernetes-sigs/gateway-api.
 - **Cloud validation**: run the rollout and node-drain tests through real EKS, AKS, GKE, DOKS and
   OKE load balancers, layer 4 and layer 7, with the shipped presets (Linode, including the

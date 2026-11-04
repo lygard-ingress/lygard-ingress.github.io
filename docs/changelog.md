@@ -7,6 +7,12 @@ minor versions may change behaviour (called out under **Changed**).
 
 ### Added
 
+- **ListenerSet** (Gateway API v1.6): teams add listeners (hostnames, certificates, ports) to a
+  shared Gateway without editing it. The Gateway opts in with `spec.allowedListeners`; set
+  listeners follow the Gateway's own, oldest set first, and one that collides with an earlier
+  listener on its port is `Conflicted` (hostname or protocol) instead of taking traffic. Routes
+  attach to a ListenerSet with a `parentRef` of kind `ListenerSet`. Certificates referenced from a
+  set default to its namespace and need a ReferenceGrant from `ListenerSet` across namespaces.
 - **TLSRoute Terminate mode**: a Gateway `TLS` listener with `tls.mode: Terminate` terminates TLS
   with its certificates and relays the decrypted stream to the TLSRoute's backend (databases and
   other TCP services that should not handle TLS themselves). Passthrough and Terminate listeners

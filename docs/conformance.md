@@ -7,18 +7,18 @@ Lygard runs the official [Gateway API conformance suite](https://gateway-api.sig
 ## Unreleased (main)
 
 Kubernetes 1.37.0 in kind with MetalLB (`LB=metallb tests/conformance-kind.sh v1.37.0
-per-gateway`), `gatewayAPI.addresses: per-gateway`, 590 tests passed, 0 failed.
+per-gateway`), `gatewayAPI.addresses: per-gateway`, 660 tests passed, 0 failed.
 
 | Profile | Core | Extended |
 |---|---|---|
-| GATEWAY-HTTP | 36 passed, 0 failed | 42 passed, 0 failed |
-| GATEWAY-GRPC | 14 passed, 0 failed | 2 passed, 0 failed |
-| GATEWAY-TLS | 19 passed, 0 failed | 6 passed, 0 failed |
-| GATEWAY-TCP | 18 passed, 0 failed | 2 passed, 0 failed |
+| GATEWAY-HTTP | 36 passed, 0 failed | 54 passed, 0 failed |
+| GATEWAY-GRPC | 14 passed, 0 failed | 9 passed, 0 failed |
+| GATEWAY-TLS | 19 passed, 0 failed | 14 passed, 0 failed |
+| GATEWAY-TCP | 18 passed, 0 failed | 9 passed, 0 failed |
 
-New extended features claimed: `GatewayStaticAddresses`, `TLSRouteModeTerminate`,
-`TLSRouteModeMixed`. Static addresses need a load balancer that honours a Service's
-`loadBalancerIP` (MetalLB here); cloud-provider-kind does not.
+New extended features claimed: `ListenerSet` (all 13 tests), `GatewayStaticAddresses`,
+`TLSRouteModeTerminate`, `TLSRouteModeMixed`. Static addresses need a load balancer that honours
+a Service's `loadBalancerIP` (MetalLB here); cloud-provider-kind does not.
 
 ## v0.13.0
 
@@ -69,7 +69,6 @@ Not supported yet (see [ROADMAP.md](roadmap.md)):
 | Feature | Why |
 |---|---|
 | `GatewayInfrastructure` | The test looks for Pods, ServiceAccounts or Services in the Gateway's namespace; Lygard's per-Gateway Service (which gets the labels and annotations) lives in Lygard's namespace |
-| `ListenerSet` | Not implemented |
 
 UDPRoute is served (DNS, QUIC passthrough) but has no conformance profile in v1.6.3. Neither do
 two features Lygard implements: a Gateway client certificate to backends
