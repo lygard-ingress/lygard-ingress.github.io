@@ -103,6 +103,33 @@ Oracle [load balancer headers](https://docs.oracle.com/en-us/iaas/Content/Balanc
 [connection reuse](https://docs.oracle.com/en-us/iaas/Content/Balance/Reference/connectionreuse.htm),
 [native ingress annotations](https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengsettingupnativeingresscontroller-configuring.htm).
 
+## One load balancer per Gateway
+
+With `gatewayAPI.addresses: per-gateway` each Gateway gets its own LoadBalancer Service, which
+starts from the data plane Service's annotations. Two Gateway fields shape it:
+
+- `spec.infrastructure.labels` and `annotations` are added to the Gateway's Service. Annotations
+  set there override the inherited ones, so one Gateway can ask its cloud for a different load
+  balancer type, an internal address or a firewall, for example.
+- An IP address in `spec.addresses` becomes the Service's `loadBalancerIP`, for providers that
+  honour it (MetalLB, Azure, GKE and others). Providers that reserve IPs through an annotation
+  instead take it through `spec.infrastructure.annotations`. Until the load balancer reports the
+  requested IP, the Gateway is `Programmed: False` with reason `AddressNotUsable`. Hostname and
+  other address types are rejected (`Accepted: False`, `UnsupportedAddress`).
+
+```yaml
+spec:
+  addresses:
+    - {type: IPAddress, value: 192.0.2.10}
+  infrastructure:
+    labels: {team: payments}
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+```
+
+In `shared` mode every Gateway uses the data plane Service, so `infrastructure` has no effect, and
+an address the shared load balancer does not have leaves the Gateway `AddressNotUsable`.
+
 ## In-cluster callers and PROXY protocol
 
 With PROXY protocol on, pods that call the load balancer's IP are short-circuited to Lygard by

@@ -4,6 +4,22 @@ Lygard runs the official [Gateway API conformance suite](https://gateway-api.sig
 (v1.6.3, experimental channel) on every release. The report for each release is committed in
 `controller/conformance/`.
 
+## Unreleased (main)
+
+Kubernetes 1.37.0 in kind with MetalLB (`LB=metallb tests/conformance-kind.sh v1.37.0
+per-gateway`), `gatewayAPI.addresses: per-gateway`, 590 tests passed, 0 failed.
+
+| Profile | Core | Extended |
+|---|---|---|
+| GATEWAY-HTTP | 36 passed, 0 failed | 42 passed, 0 failed |
+| GATEWAY-GRPC | 14 passed, 0 failed | 2 passed, 0 failed |
+| GATEWAY-TLS | 19 passed, 0 failed | 6 passed, 0 failed |
+| GATEWAY-TCP | 18 passed, 0 failed | 2 passed, 0 failed |
+
+New extended features claimed: `GatewayStaticAddresses`, `TLSRouteModeTerminate`,
+`TLSRouteModeMixed`. Static addresses need a load balancer that honours a Service's
+`loadBalancerIP` (MetalLB here); cloud-provider-kind does not.
+
 ## v0.13.0
 
 Same results as v0.12.0 below for the Gateway profiles (report
@@ -52,13 +68,13 @@ Not supported yet (see [ROADMAP.md](roadmap.md)):
 
 | Feature | Why |
 |---|---|
-| `GatewayInfrastructure` | Per-Gateway resources are created in Lygard's namespace, not the Gateway's |
-| `GatewayStaticAddresses` | `spec.addresses` is not passed to the load balancer Service |
-| `GatewayBackendClientCertificate` | No client certificate towards backends from the Gateway |
+| `GatewayInfrastructure` | The test looks for Pods, ServiceAccounts or Services in the Gateway's namespace; Lygard's per-Gateway Service (which gets the labels and annotations) lives in Lygard's namespace |
 | `ListenerSet` | Not implemented |
-| `TLSRouteModeTerminate`, `TLSRouteModeMixed` | TLSRoute is passthrough only; terminate TLS with an HTTPS listener |
 
-UDPRoute is served (DNS, QUIC passthrough) but has no conformance profile in v1.6.3.
+UDPRoute is served (DNS, QUIC passthrough) but has no conformance profile in v1.6.3. Neither do
+two features Lygard implements: a Gateway client certificate to backends
+(`spec.tls.backend.clientCertificateRef`) and HTTPRoute session persistence; Lygard's own tests
+cover them.
 
 In the default shared address mode (every Gateway behind one load balancer), frontend client
 certificate validation and listener isolation across Gateways are not available; run conformance

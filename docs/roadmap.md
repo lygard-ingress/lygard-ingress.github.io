@@ -7,16 +7,16 @@ build it? Open an issue.
 
 ## Now
 
-- **Gateway API, remaining extended features**: `ListenerSet`, `TLSRoute` Terminate mode,
-  Gateway infrastructure propagation (generated resources in the Gateway's namespace), static
-  addresses, Gateway client certificates to backends, session persistence (GEP-1619).
+- **Gateway API, remaining extended features**: `ListenerSet`,
+  per-Gateway resources in the Gateway's own namespace (labels, annotations and static IPs already
+  reach the per-Gateway Service).
 - **Upstream conformance report**: submit the v1.6 report to kubernetes-sigs/gateway-api.
 - **Cloud validation**: run the rollout and node-drain tests through real EKS, AKS, GKE, DOKS and
   OKE load balancers, layer 4 and layer 7, with the shipped presets (Linode, including the
   NodeBalancer in HTTP mode, is validated today).
 - **Akamai Cloud Quick Deploy App**: a hardened VM running Lygard with automatic HTTPS, the CRS
   WAF and the dashboard (`deploy/marketplace/`), submitted to the Akamai marketplace.
-- **Soak and chaos**: 72-hour runs with pod, node and controller failures under load.
+- **Soak**: 72-hour runs under load (the chaos scenarios run today with `tests/chaos/run.sh`).
 - **Incremental configuration**: send changes instead of full documents to the proxies (full
   documents are already gzip-compressed).
 

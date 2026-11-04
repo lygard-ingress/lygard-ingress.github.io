@@ -297,3 +297,25 @@ listeners:
   day, and the error is logged (`ACME certificate failed`).
 - Until a host's certificate arrives, TLS for it uses a self-signed fallback.
 
+
+## Client certificates to backends
+
+When backends require mutual TLS, put the gateway's client certificate in a `kubernetes.io/tls`
+Secret and reference it from the Gateway:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata: {name: gw, namespace: infra}
+spec:
+  gatewayClassName: lygard
+  tls:
+    backend:
+      clientCertificateRef: {name: gateway-client}   # Secret in the Gateway's namespace
+  listeners: [...]
+```
+
+Lygard presents it on every TLS connection to a backend (one with a BackendTLSPolicy, or
+`appProtocol: https`). A Secret in another namespace needs a ReferenceGrant from Gateways to
+Secrets. A route attached to several Gateways uses the certificate only if they all reference the
+same Secret. Standalone, set `tlsClientCertPem` and `tlsClientKeyPem` on the backend.

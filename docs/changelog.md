@@ -7,6 +7,34 @@ minor versions may change behaviour (called out under **Changed**).
 
 ### Added
 
+- **TLSRoute Terminate mode**: a Gateway `TLS` listener with `tls.mode: Terminate` terminates TLS
+  with its certificates and relays the decrypted stream to the TLSRoute's backend (databases and
+  other TCP services that should not handle TLS themselves). Passthrough and Terminate listeners
+  can share a port (Mixed). Standalone: `terminate: true` on a TLS route.
+- **Gateway `spec.infrastructure` and `spec.addresses`** (per-gateway mode): the Gateway's
+  infrastructure labels and annotations are added to its load balancer Service (its annotations
+  override the inherited ones), and an IP address becomes the Service's `loadBalancerIP`. The
+  Gateway is `AddressNotUsable` until the load balancer has the requested IP; hostname addresses
+  are rejected with `UnsupportedAddress`
+  ([docs/cloud-providers.md](cloud-providers.md#one-load-balancer-per-gateway)).
+- **Chaos tests** (`tests/chaos/run.sh`): failure injection under load in kind. Graceful and forced
+  data plane pod deletion, the controller leader killed (and a route created after), a data plane
+  restart with no controller running, and a worker node stopped. On Kubernetes 1.37: no failed
+  requests in any scenario except the node stop (1 of 12,000, a connection in flight on the lost
+  node).
+- **Gateway client certificate to backends** (GEP-3155): a Gateway's
+  `spec.tls.backend.clientCertificateRef` (a `kubernetes.io/tls` Secret, cross-namespace with a
+  ReferenceGrant) is presented to backends Lygard reaches over TLS, for example through a
+  BackendTLSPolicy, so backends that require mutual TLS work. Plaintext backends are unaffected; a
+  route attached to Gateways with different client certificates uses none and logs a warning.
+  Standalone: backend `tlsClientCertPem` / `tlsClientKeyPem`.
+- **Session persistence (sticky sessions)**: Lygard issues a cookie naming the endpoint that served a
+  client and routes the client's later requests there while it is available; when it is gone the
+  client moves and gets a new cookie. Backend `sessionPersistence` (standalone), HTTPRoute rule
+  `sessionPersistence` (GEP-1619, cookie type), and `lygard.io/session-cookie` /
+  `session-cookie-ttl`. ingress-nginx `affinity: cookie` now issues the cookie too (it used to hash
+  an existing one), including `session-cookie-max-age`/`expires`. The cookie value is a hash, not
+  the endpoint address.
 - **Akamai Cloud Quick Deploy App** (`deploy/marketplace/linode-marketplace-lygard`): a hardened
   Ubuntu 24.04 Linode (sudo user, SSH lockdown, firewall, fail2ban, automatic security updates)
   running Lygard from its image under systemd, with automatic HTTPS, the OWASP CRS WAF (detect or
@@ -65,8 +93,8 @@ minor versions may change behaviour (called out under **Changed**).
   and treats `..;` / `.;` as dot segments, so path-scoped policies cannot be bypassed that way.
 - **Slow bodies**: `global.bodyReadTimeout` (30 s) bounds the part of a request body Lygard
   buffers before proxying; new optional `global.maxConnectionsPerIp`.
-- **CORS**: `allowOrigins: ["*"]` no longer grants credentialed access to every origin; the
-  `null` origin matches only when listed.
+- **CORS**: the `null` origin matches only when listed; `allowOrigins: ["*"]` with
+  `allowCredentials` is warned about.
 - `waf.oversizeAction: reject` refuses bodies larger than the WAF inspects (default `pass`, as
   before; truncated inspections are now flagged `WAFT` in the access log).
 - `/api/config` also redacts credential-like header values, plugin configurations and URL

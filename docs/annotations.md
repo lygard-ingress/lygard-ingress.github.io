@@ -34,6 +34,8 @@ unreachable external auth service makes the route refuse requests (fail closed).
 | `lygard.io/backend-sni` | `api.internal` | SNI / name verified on the backend certificate |
 | `lygard.io/lb` | `least_request`, `round_robin`, `random`, `consistent_hash` | Load balancing (default `least_request`, power of two choices) |
 | `lygard.io/hash-on` | `ip`, `header:x-user`, `cookie:session` | Key for `consistent_hash` |
+| `lygard.io/session-cookie` | `SID` | Sticky sessions: Lygard issues this cookie naming the endpoint that served the first request and keeps the client there while it is available (also `nginx.ingress.kubernetes.io/affinity: cookie`) |
+| `lygard.io/session-cookie-ttl` | `1h` | Session cookie lifetime; unset is a browser-session cookie |
 | `lygard.io/connect-timeout` | `2s` | TCP/TLS connect timeout |
 | `lygard.io/max-requests` | `1000` | Circuit breaker: concurrent requests per backend |
 | `lygard.io/health-check-path`, `health-check-interval` | `/healthz`, `5s` | Active health checks |

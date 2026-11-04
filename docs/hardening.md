@@ -26,8 +26,9 @@ What Lygard does by default, and the settings to review before exposing it to th
 - **Request smuggling**: a request with both `Transfer-Encoding` and `Content-Length` is
   forwarded chunked only; hop-by-hop headers (including those named in `Connection`) are stripped.
 - **HTTP/2**: rapid-reset protection, header list size limits, a cap on concurrent streams.
-- **CORS**: `allowOrigins: ["*"]` never grants credentialed access. With `allowCredentials`, list
-  the origins; the `null` origin matches only when listed.
+- **CORS**: with `allowCredentials`, list the origins. `allowOrigins: ["*"]` plus credentials lets
+  any website make credentialed requests (the Gateway API requires echoing the origin then), and
+  Lygard warns about it. The `null` origin matches only when listed.
 - **ExternalName Services** are refused as backends unless the operator enables them
   (`controller.allowExternalNameServices`); even then loopback, link-local (cloud metadata) and
   other namespaces' in-cluster names are refused.
