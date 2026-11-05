@@ -2,8 +2,9 @@
 
 Lygard's WAF has two layers that run in this order:
 
-1. **Condition rules.** Each rule says "requests that look like this: block, allow, log or
-   score", based on method, path, query, headers, cookies, client address, IP list or country.
+1. **Condition rules.** Each rule says "requests that look like this: block, allow, count,
+   captcha or score", based on method, path, query, headers, cookies, client address, IP list or
+   country.
    Your own rules, your rule groups and the built-in packs (WordPress, PHP, ...) all use this
    format.
 2. **Attack rules.** These score fragments of the request for SQL injection, XSS, command
@@ -80,7 +81,7 @@ exclusion on one field (`waf.exclusions`, or the dashboard's tuning panel).
 ```yaml
 - id: 2001                  # unique; shown in WAF events; usable in excludeRules
   message: no uploads from outside the EU
-  action: block             # block (default) | allow | log | score
+  action: block             # block (default) | allow | count | captcha | score
   status: 403               # for block (default 403)
   score: 5                  # for score: added to the anomaly score
   when:                     # every condition must hold
@@ -114,6 +115,57 @@ exclusion on one field (`waf.exclusions`, or the dashboard's tuning panel).
 - **Validation.** Ids must not collide with the attack rules or with another rule on the route.
   A rule the data plane cannot compile (a bad regex, an unknown list or pack) rejects the whole
   configuration and reports where the error is, and the previous configuration keeps serving.
+
+## Actions
+
+| Action | What happens | Metric `action` label |
+|---|---|---|
+| `block` | Refused with `status` (default 403) and Lygard's error page. In `mode: detect` it is only recorded | `block` |
+| `allow` | The request skips the rest of the WAF: later rules, packs and attack rules | `allow` |
+| `count` | Recorded (WAF events, metrics, inspector); evaluation continues. `log` is accepted as an alias | `count` |
+| `captcha` | Browsers without a valid pass get a challenge page; once solved, the rule counts for `passTtl`. Clients that cannot run a challenge (API clients, scripts) get 403 | `captcha`, `captcha_passed` |
+| `score` | Adds `score` to the request's anomaly score; the attack rules' threshold decides | `score` |
+
+Every match increments `lygard_waf_rule_actions_total{route,rule,action}`. A blocked or
+challenged request shows the rule in the request inspector under its request ID.
+
+### Challenges (`captcha`)
+
+The default challenge is a proof of work that runs in the visitor's browser:
+
+- **No third party:** nothing is sent outside your cluster, and nothing tracks the visitor.
+- **Cost to visitors:** at the default `difficulty: 18`, about half a second on a phone, once
+  per `passTtl`.
+- **Who fails it:** a client that does not run JavaScript.
+
+A solved challenge sets an HttpOnly cookie, `__lygard_pass`. It is signed with HMAC-SHA256 and
+bound to the host and to the client's /24 (IPv4) or /64 (IPv6). The signing key is derived from
+the admin token Secret that the chart creates at install, or from `LYGARD_CHALLENGE_SECRET`. So
+every replica accepts every other replica's passes, and nothing is written to the cluster at
+run time.
+
+```yaml
+global:
+  challenge:
+    provider: pow          # pow | turnstile | hcaptcha | recaptcha
+    difficulty: 18         # pow only: each +1 doubles the work
+    passTtl: 30m
+    siteKey: ""            # turnstile / hcaptcha / recaptcha site key; the secret comes from
+                           # the LYGARD_CAPTCHA_SECRET environment variable
+```
+
+Challenge `/checkout` and `/login` for new visitors while letting monitoring through:
+
+```yaml
+- id: 3001
+  action: captcha
+  message: challenge checkout and login
+  when: {path: {regex: "^/(checkout|login)"}, methods: [GET]}
+  unless: {headers: {user-agent: {contains: uptime-monitor}}}
+```
+
+Only challenge `GET` pages that browsers load. A `POST` from a form or an API call cannot show a
+challenge page.
 
 ## Rule groups and IP lists (cluster-wide, via the ConfigMap)
 

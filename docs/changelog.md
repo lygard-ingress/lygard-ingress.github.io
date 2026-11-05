@@ -7,6 +7,33 @@ minor versions may change behaviour (called out under **Changed**).
 
 ### Added
 
+- **Request inspector.**
+  - Look up any recent request by request ID or trace ID: dashboard → Request inspector, or
+    `GET /api/requests/<id>`, which asks the other replicas when needed.
+  - Each answer shows a one-line root cause, a timeline, every response flag with its meaning
+    and fix, the WAF matches, upstream details and a link to the trace.
+  - `GET /api/inspector?problems=1` lists recent failures. History size:
+    `global.requestHistory` (4096 per replica).
+  - Trace link: `global.tracing.traceLink`.
+- **Request ID = trace ID.**
+  - A request without `X-Request-Id` gets its W3C trace ID as its request ID.
+  - A client-supplied ID is kept, and the trace ID is returned in `x-trace-id`.
+  - Spans carry `http.request.id`, the WAF score and rules, the error, upstream time and
+    attempts.
+- **Status pages.** Lygard's own errors (401, 403, 404, 429, 501, 502, 503, 504, ...) answer
+  browsers with a clean HTML page, API clients with JSON and everyone else with text. All three
+  show the request ID and never internal details. Configure with `global.errorPages` (`format`,
+  `title`, `pages` with `{status}`, `{reason}`, `{message}`, `{requestId}` and `{traceId}`
+  placeholders). Route `errorPages` take the same placeholders.
+- **WAF rule actions `count` and `captcha`.**
+  - `count` replaces `log`, which still works.
+  - `captcha` serves a challenge, configured in `global.challenge`: a built-in browser proof of
+    work, or Turnstile, hCaptcha or reCAPTCHA. Passes are signed, bound to host and network,
+    and valid on every replica.
+  - New metrics: `lygard_challenges_total{result}`, plus every action in
+    `lygard_waf_rule_actions_total`.
+- **Docs.** New page: `docs/observability.md`.
+
 - WAF rule management ([docs/waf-rules.md](waf-rules.md)):
   - **Rule packs.** `waf.rulesets` and `lygard.io/waf-rulesets` switch on built-in packs:
     `wordpress`, `php`, `sensitive-files`, `bad-bots`, `header-hardening`, `admin-paths`.
