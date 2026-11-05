@@ -42,6 +42,7 @@ nav:
       - Policy: policy.md
       - WAF rules: waf-rules.md
       - Observability: observability.md
+      - Dashboard: dashboard.md
       - Authentication: authentication.md
       - Certificates: certificates.md
       - HTTP/3: http3.md

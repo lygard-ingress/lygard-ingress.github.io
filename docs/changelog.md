@@ -7,6 +7,25 @@ minor versions may change behaviour (called out under **Changed**).
 
 ### Added
 
+- **Dashboard "Generate" section** ([docs/dashboard.md](dashboard.md)).
+  - **Generators** for Ingress, HTTPRoute, LygardPolicy, Helm values, Secrets and ConfigMaps:
+    every field is explained, and the explanation goes into the YAML as a comment. The output
+    is copied or downloaded and applied by you; nothing is written to the cluster.
+  - **Rule catalog** (`GET /api/waf/catalog`): every WAF rule with what it detects, an example,
+    its false-positive risk, and YAML to switch it off, exclude a field or record instead.
+  - **Suggestions** from observed traffic (`GET /api/suggestions`): sign-in protection, admin
+    path restriction, unauthenticated sensitive data, upload limits, rule packs, static-file
+    skipping, failing or slow endpoints, security headers. Each comes with its reason and a
+    LygardPolicy.
+  - **Password hashing**: `POST /api/generate/htpasswd` hashes a basic-auth password (bcrypt)
+    for a Secret you create; nothing is stored.
+- **Chart**: `extraEnv` adds environment variables to the data plane, e.g. the captcha secret
+  from your own Secret.
+
+### Fixed
+
+- `disabledCategories: [java]` now also turns off the native engine's Log4Shell rules.
+
 - **Request inspector.**
   - Look up any recent request by request ID or trace ID: dashboard → Request inspector, or
     `GET /api/requests/<id>`, which asks the other replicas when needed.
