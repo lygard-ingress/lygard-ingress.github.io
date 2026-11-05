@@ -48,8 +48,11 @@ public-api   True       Accepted   2m
 ## Fields
 
 `spec.policy` has the same fields as a route `policy` in the data plane configuration (camelCase):
-`requestTimeout`, `retry`, `rateLimit`, `waf`, `ipAllow`, `ipDeny`, `geoAllow`, `geoDeny`, `jwt`,
+`requestTimeout`, `retry`, `rateLimit`, `waf`, `ipAllow`, `ipDeny`, `ipDenyLists`, `geoAllow`, `geoDeny`, `jwt`,
 `extAuth`, `cors`, `securityHeaders`, `maxBodyBytes`, `httpsRedirect`, `accessLog`, `ja4Deny`,
 `plugins`, `errorPages`. Their meaning matches the annotations in [annotations.md](annotations.md).
+
+WAF condition rules, rule packs, attack categories and IP lists (`waf.rules`, `waf.rulesets`,
+`waf.disabledCategories`, `ipDenyLists`) are described in [waf-rules.md](waf-rules.md).
 
 Basic auth needs a Secret and stays an annotation (`lygard.io/auth-basic-secret`).

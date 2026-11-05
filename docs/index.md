@@ -90,6 +90,10 @@ Routes opt in per route (`lygard.io/waf-engine: crs`); the faster native engine 
 **Security** — native WAF (48 rules: SQLi, XSS, RCE, LFI/RFI, SSRF, Log4Shell, SSTI, prototype
 pollution, XXE, scanners, protocol abuse) with input normalisation, anomaly scoring, paranoia
 levels 1–4, detect/block modes, per-route rule and argument exclusions, and custom regex rules;
+**rule packs** (WordPress, PHP, sensitive files, bad bots, header tricks, admin paths), condition
+rules (method, path, header, cookie, IP, country → block / allow / log / score), attack categories
+switchable per route, **IP reputation lists** (Spamhaus DROP, FireHOL, Tor exits, your own from a
+ConfigMap or URL), all editable from the dashboard as GitOps-ready YAML ([docs/waf-rules.md](waf-rules.md));
 token-bucket rate limiting; bcrypt basic auth; JWT (HS/RS/PS/ES/EdDSA, static keys or JWKS);
 IP allow/deny lists; CORS; security headers incl. HSTS; request body limits; strict PROXY
 protocol; slowloris and HTTP/2 rapid-reset limits; **cluster-wide rate limits without Redis**

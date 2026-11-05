@@ -39,6 +39,12 @@ build it? Open an issue.
 
 ## Done recently
 
+- **WAF rule management**: built-in rule packs (WordPress, PHP, sensitive files, bad bots, header
+  hardening, admin paths), condition rules, rule groups and IP reputation lists (Spamhaus DROP,
+  FireHOL, Tor, files, URLs) per route; attack categories switchable in both engines; a
+  dashboard editor that produces a LygardPolicy, annotations or config, and a request tester
+  ([docs/waf-rules.md](waf-rules.md)).
+
 - **Automatic HTTPS for standalone installs**: a built-in ACME client (HTTP-01) issues, caches and
   renews Let's Encrypt certificates without a restart ([docs/certificates.md](certificates.md)).
 - **Security hardening**: ExternalName backends off by default, forged identity headers stripped,

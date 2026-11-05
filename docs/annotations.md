@@ -52,6 +52,9 @@ unreachable external auth service makes the route refuse requests (fail closed).
 | `lygard.io/waf-exclude-rules`, `waf-exclude-args` | `942100`, `html_body` | Route-wide exclusions |
 | `lygard.io/waf-inspect-body`, `waf-inspect-response` | `"true"` | Inspect request bodies / response bodies (CRS response phases) |
 | `lygard.io/waf-skip-extensions` | `css, js, png, woff2` | Leave plain static-file fetches uninspected: GET/HEAD, no query string, no body ([cost](performance.md)) |
+| `lygard.io/waf-rulesets` | `wordpress, php, sensitive-files` | Built-in rule packs or `waf.ruleGroups` to add ([waf-rules.md](waf-rules.md)) |
+| `lygard.io/waf-disabled-categories` | `java, xss` | Attack categories switched off for this route, in either engine |
+| `lygard.io/ip-deny-lists` | `spamhaus-drop, tor-exits` | Refuse addresses in named IP lists (presets or `waf.ipLists`) |
 | `lygard.io/allow-cidrs`, `deny-cidrs` | `10.0.0.0/8, 192.168.0.0/16` | IP filtering |
 | `lygard.io/geo-allow`, `geo-deny` | `DE, FR` | Country filtering (ISO 3166 alpha-2). Countries come from CDN headers set by `trustedProxies` (`CF-IPCountry`, `CloudFront-Viewer-Country`, ...) or a GeoLite2 database (`anomaly.geoipDatabase`). With `geo-allow`, an unknown country is refused |
 | `lygard.io/ja4-deny` | `t13d1516h2_*` | Refuse TLS client fingerprints |

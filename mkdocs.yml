@@ -40,6 +40,7 @@ nav:
   - Configuration:
       - Annotations: annotations.md
       - Policy: policy.md
+      - WAF rules: waf-rules.md
       - Authentication: authentication.md
       - Certificates: certificates.md
       - HTTP/3: http3.md

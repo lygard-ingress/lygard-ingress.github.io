@@ -7,6 +7,25 @@ minor versions may change behaviour (called out under **Changed**).
 
 ### Added
 
+- WAF rule management ([docs/waf-rules.md](waf-rules.md)):
+  - **Rule packs.** `waf.rulesets` and `lygard.io/waf-rulesets` switch on built-in packs:
+    `wordpress`, `php`, `sensitive-files`, `bad-bots`, `header-hardening`, `admin-paths`.
+  - **Condition rules.** `waf.rules` match on method, path, query, headers, arguments, cookies,
+    client IP, IP list or country, and block, allow, log or score; `unless` sets exceptions.
+  - **Rule groups.** `waf.ruleGroups` defines named groups shared across routes.
+  - **Attack categories.** `waf.disabledCategories` and `lygard.io/waf-disabled-categories`
+    switch categories off in both the native and the CRS engine.
+  - **IP reputation lists.** `waf.ipLists` plus `ipDenyLists`/`lygard.io/ip-deny-lists`, with
+    the presets `spamhaus-drop`, `firehol-level1` and `tor-exits`, or inline ranges, files or
+    URLs; refreshed in the background, private ranges excluded. New metrics:
+    `lygard_ip_list_ranges`, `lygard_ip_list_refresh_total`, `lygard_waf_rule_actions_total`.
+  - **Security headers.** `securityHeaders` gains `crossOriginOpenerPolicy`,
+    `crossOriginResourcePolicy`, `crossOriginEmbedderPolicy` and `removeHeaders`.
+  - **Dashboard.** A WAF rules editor produces a LygardPolicy, annotations or standalone config,
+    and runs test requests against the live rules (`POST /api/waf/test`, plus
+    `GET /api/waf/rulesets` and `GET /api/ip-lists`).
+  - **Controller.** The controller's model now carries every security-header field, so a
+    LygardPolicy with `contentTypeNosniff` or `permissionsPolicy` is no longer rejected.
 - **Ingress hostname ownership** (`controller.ingressHostOwnership`, opt-in): for clusters where
   tenants share one Ingress class, a host belongs to the namespace of the oldest Ingress naming
   it; other namespaces' Ingresses cannot add rules or certificates for it.
