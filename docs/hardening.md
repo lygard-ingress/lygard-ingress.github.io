@@ -29,6 +29,12 @@ What Lygard does by default, and the settings to review before exposing it to th
 - **CORS**: with `allowCredentials`, list the origins. `allowOrigins: ["*"]` plus credentials lets
   any website make credentialed requests (the Gateway API requires echoing the origin then), and
   Lygard warns about it. The `null` origin matches only when listed.
+- **Shared Ingress class across tenants**: set `controller.ingressHostOwnership: true`. A host
+  then belongs to the namespace of the oldest Ingress that names it, and Ingresses in other
+  namespaces cannot add paths or certificates for it (the default backend counts as a host, so
+  one tenant cannot catch every unmatched request either). Ignored rules are logged by the
+  controller. Without it, as with ingress-nginx, the oldest rule wins per host and path, so a
+  tenant can take over a path another tenant has not claimed.
 - **ExternalName Services** are refused as backends unless the operator enables them
   (`controller.allowExternalNameServices`); even then loopback, link-local (cloud metadata) and
   other namespaces' in-cluster names are refused.

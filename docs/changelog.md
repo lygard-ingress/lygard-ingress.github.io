@@ -7,6 +7,9 @@ minor versions may change behaviour (called out under **Changed**).
 
 ### Added
 
+- **Ingress hostname ownership** (`controller.ingressHostOwnership`, opt-in): for clusters where
+  tenants share one Ingress class, a host belongs to the namespace of the oldest Ingress naming
+  it; other namespaces' Ingresses cannot add rules or certificates for it.
 - **ListenerSet** (Gateway API v1.6): teams add listeners (hostnames, certificates, ports) to a
   shared Gateway without editing it. The Gateway opts in with `spec.allowedListeners`; set
   listeners follow the Gateway's own, oldest set first, and one that collides with an earlier

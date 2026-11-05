@@ -31,8 +31,6 @@ build it? Open an issue.
 - **Per-client connection limits** and response compression (gzip/brotli/zstd).
 - **OWASP CRS**: a literal prefilter across rules for large request bodies, managed rule updates,
   per-rule metrics in the dashboard.
-- **Ingress hostname ownership** across namespaces (opt-in), for multi-tenant clusters that use
-  Ingress rather than the Gateway API.
 - **Public, reproducible competitor benchmark** with one harness for every gateway.
 
 ## Done recently
