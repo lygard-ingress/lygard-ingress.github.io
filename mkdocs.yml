@@ -32,21 +32,26 @@ validation:
   links: {not_found: warn, anchors: warn}
 nav:
   - Home: index.md
-  - Getting started:
+  - Start:
+      - Getting started: getting-started.md
+      - Features: features.md
       - Cloud providers: cloud-providers.md
       - Migrating from ingress-nginx: migrating-from-ingress-nginx.md
-      - Upgrading: upgrading.md
-      - Hardening: hardening.md
-  - Configuration:
+  - Configure:
       - Annotations: annotations.md
-      - Policy: policy.md
-      - WAF rules: waf-rules.md
-      - Observability: observability.md
-      - Dashboard: dashboard.md
-      - Authentication: authentication.md
+      - LygardPolicy: policy.md
+      - Configuration reference: configuration.md
       - Certificates: certificates.md
       - HTTP/3: http3.md
-  - Performance:
+  - Secure:
+      - WAF rules: waf-rules.md
+      - Authentication: authentication.md
+      - Hardening: hardening.md
+  - Observe:
+      - Observability: observability.md
+      - Dashboard: dashboard.md
+  - Operate:
+      - Upgrading: upgrading.md
       - Performance tuning: performance.md
       - Benchmarks: benchmarks.md
       - Conformance: conformance.md

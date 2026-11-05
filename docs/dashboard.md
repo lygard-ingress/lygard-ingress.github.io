@@ -12,7 +12,7 @@ This works in clusters where nobody is allowed to change ConfigMaps or Secrets a
 installation, and it keeps Git as the source of truth.
 
 ```sh
-kubectl -n lygard port-forward deploy/lygard 9901:9901
+kubectl -n lygard port-forward svc/lygard-admin 9901
 kubectl -n lygard get secret lygard-admin -o jsonpath='{.data.token}' | base64 -d   # the token
 open http://localhost:9901/dashboard
 ```

@@ -7,6 +7,14 @@ minor versions may change behaviour (called out under **Changed**).
 
 ### Added
 
+- **Documentation reorganised** into Start, Configure, Secure, Observe and Operate.
+  - **New pages:** [Getting started](getting-started.md) (Kubernetes and standalone,
+    following a request by its ID) and [Features](features.md) (the README's feature list,
+    grouped).
+  - **[Configuration reference](configuration.md):** every setting with its type, default
+    and description, generated from the source; CI fails when it is out of date (hidden
+    `lygard defaults` command).
+  - **Shorter README:** an overview, a quick start and the docs index.
 - **Dashboard "Generate" section** ([docs/dashboard.md](dashboard.md)).
   - **Generators** for Ingress, HTTPRoute, LygardPolicy, Helm values, Secrets and ConfigMaps:
     every field is explained, and the explanation goes into the YAML as a comment. The output
