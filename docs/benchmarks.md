@@ -68,6 +68,53 @@ Lygard adds about 0.2 ms at the median, and about 0.5 ms with OWASP CRS (1 ms wh
 by up to 20% between rounds and include the load generator, which runs on the same VM; a
 separate load-generator host would lower them slightly.
 
+## Against other proxies
+
+`bench/competitors/run.py`: each proxy in its official container image with host networking,
+pinned to the same two cores of the Linode Dedicated 8 above, with two workers, no access log,
+and keep-alive connections to the backend. The backend (nginx answering 200 directly) and the load
+generator (`oha` 1.16.0, 100 connections) have their own cores. Three rounds of 15 s, medians,
+2026-11-05 (`bench/competitors/results-linode-dedicated8-2026-11-05.json`, image digests
+included). CPU is measured from each container's cgroup, memory is its anonymous memory.
+
+| Proxy | req/s (2 cores) | CPU µs/request | p50 / p99 at 5,000 req/s | Memory |
+|---|---|---|---|---|
+| HAProxy 3.2.26 | 42,320 | 47 | 0.29 / 0.65 ms | 14 MB |
+| NGINX 1.30.6 | 41,472 | 48 | 0.26 / 0.53 ms | 16 MB |
+| **Lygard (main)** | 21,409 | 93 | 0.33 / 0.70 ms | 36 MB |
+| Envoy 1.39.6 | 14,337 | 139 | 0.73 / 1.55 ms | 18 MB |
+| Traefik 3.7.17 | 13,180 | 151 | 0.54 / 2.21 ms | 41 MB |
+| Caddy 2.11.8 | 10,070 | 197 | 0.60 / 3.44 ms | 19 MB |
+
+As a plain reverse proxy, Lygard needs about twice the CPU per request of NGINX and HAProxy, and
+less than Envoy, Traefik and Caddy. Latency at a fixed rate is within 0.1 ms of NGINX at the median.
+A profile under this load has no hot spot: Lygard's own code is 11% of the CPU, the kernel 46%,
+and the rest is HTTP parsing, async scheduling and allocation. Lygard makes fewer system calls
+per request than NGINX (4 against 7.7), so the gap is in the per-request work of the HTTP stack
+and scheduler, not in I/O.
+
+With a WAF, OWASP CRS 4.30.0 at paranoia level 1 in blocking mode in both, checked before each
+run (an XSS probe must get 403). The ModSecurity image's backend include closes the upstream
+connection after every request; the benchmark replaces it with keep-alive, like the others.
+Latency is measured at 500 req/s, below both proxies' capacity.
+
+| WAF | Request | req/s (2 cores) | CPU µs/request | p50 / p99 at 500 req/s | Memory |
+|---|---|---|---|---|---|
+| **Lygard + CRS** | GET | 6,251 | 320 | 0.48 / 0.78 ms | 101 MB |
+| NGINX + ModSecurity 3 + CRS | GET | 1,068 | 1,887 | 1.93 / 3.42 ms | 59 MB |
+| **Lygard + CRS** | POST 1 KB JSON | 3,510 | 570 | 0.85 / 1.13 ms | 104 MB |
+| NGINX + ModSecurity 3 + CRS | POST 1 KB JSON | 624 | 3,245 | 5.59 / 62.03 ms | 61 MB |
+
+Running the same rule set, Lygard handles 5.9x (GET) and 5.6x (POST) the requests of
+NGINX with ModSecurity on the same cores.
+
+Reproduce on any Linux host with Docker and `oha`:
+
+```sh
+docker build -t lygard:bench .
+sudo python3 bench/competitors/run.py        # ROUNDS=3 DUR=15s ONLY=nginx,lygard
+```
+
 ## Memory
 
 `bench/conns.py`: RSS growth per idle connection, 10,000 connections, three rounds, Linux

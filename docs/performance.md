@@ -32,6 +32,13 @@ How to keep it affordable:
 - **Large bodies**: `maxInspectBytes` (default 64 KiB) bounds the work per request; the rest of
   the body streams through uninspected. Uploads and APIs carrying files: lower it, or turn
   `inspectBody` off for those routes and keep it on for forms and JSON APIs.
+  CRS cost grows linearly with the inspected body: in the engine alone (one Apple M4 Pro core,
+  `crs_throughput` benchmark, benign prose) a 1 KB JSON body costs 0.34 ms, 16 KB 2.2 ms and a
+  64 KB form 8.7 ms. About two thirds of that is the rules' operators each scanning the value,
+  the rest transformations (URL and entity decoding per rule chain). A shared literal prefilter
+  across rules was measured and not adopted: only about 40% of the CRS regexes have a literal
+  set that every match starts with, the regex engine already prefilters those internally, and
+  they account for 14% of the time, less than the extra scan costs.
 - **Paranoia**: stay at 1 unless a route needs 2+; each level adds rules and false positives.
 - **Exclusions** (`lygard.io/waf-exclusions`) remove rules from specific arguments, which also
   saves their evaluation.

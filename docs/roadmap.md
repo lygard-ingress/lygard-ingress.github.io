@@ -16,7 +16,11 @@ build it? Open an issue.
   NodeBalancer in HTTP mode, is validated today).
 - **Akamai Cloud Quick Deploy App**: a hardened VM running Lygard with automatic HTTPS, the CRS
   WAF and the dashboard (`deploy/marketplace/`), submitted to the Akamai marketplace.
-- **Soak**: 72-hour runs under load (the chaos scenarios run today with `tests/chaos/run.sh`).
+- **Soak per release**: a 72-hour run passed on v0.13.1 (31 million requests, no errors, no
+  restarts, flat memory; `tests/soak/README.md`); repeat it for each release.
+- **Plain-proxy CPU**: Lygard uses about 2x the CPU per request of NGINX and HAProxy when it only
+  proxies (docs/benchmarks.md, "Against other proxies"); try a thread-per-core runtime and fewer
+  allocations per request.
 - **Incremental configuration**: send changes instead of full documents to the proxies (full
   documents are already gzip-compressed).
 
@@ -29,9 +33,9 @@ build it? Open an issue.
 - **Authorization policies**: CEL/OPA rules on routes beyond JWT claims, IP and country lists.
 - **Built-in OIDC login** (today: forward auth to oauth2-proxy and similar).
 - **Per-client connection limits** and response compression (gzip/brotli/zstd).
-- **OWASP CRS**: a literal prefilter across rules for large request bodies, managed rule updates,
-  per-rule metrics in the dashboard.
-- **Public, reproducible competitor benchmark** with one harness for every gateway.
+- **OWASP CRS**: managed rule updates, per-rule metrics in the dashboard. Large bodies: a literal
+  prefilter was measured and does not pay (see docs/performance.md); the remaining lever is one
+  combined automaton for all rules of a transformation chain.
 
 ## Done recently
 
